@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Predict Customer Segment - Customer Segmentation System{% endblock %}
+
+{% block content %}
+<div class="container dashboard-header">
+    <div class="dashboard-title-row">
+        <div>
+            <h1 class="page-title">Real-Time Customer Segment Predictor</h1>
+            <p class="page-subtitle">Input customer financial and demographic metrics to predict their optimal segment and spend propensity.</p>
+        </div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm" id="btn-pred-dashboard">
+            📊 View Dashboard
+        </a>
+    </div>
+
+    <div class="predict-layout">
+        <!-- Input Form Card -->
+        <div class="card" id="prediction-form-card">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(79, 70, 229, 0.2); color: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                    📝
+                </div>
+                <div>
+                    <h2 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700;">Customer Attributes</h2>
+                    <p style="font-size: 0.82rem; color: var(--text-secondary);">Features will be scaled using the saved StandardScaler pipeline.</p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('predict') }}" id="predict-form">
+                <!-- Annual Income (k$) -->
+                <div class="form-group">
+                    <label for="income" class="form-label">
+                        Annual Income (in thousands of dollars, $k) <span style="color: #f87171;">*</span>
+                    </label>
+                    <input 
+                        type="number" 
+                        name="income" 
+                        id="income" 
+                        class="form-control" 
+                        placeholder="e.g. 75 (for $75,000)" 
+                        value="{{ form_data.income }}" 
+                        step="any"
+                        min="1"
+                        max="500"
+                        required
+                    >
+                    <div class="form-help">Typical mall visitor range: $15k - $137k. Value is normalized via StandardScaler.</div>
+                </div>
+
+                <!-- Spending Score (1-100) -->
+                <div class="form-group">
+                    <label for="spending" class="form-label">
+                        Spending Score (1 to 100) <span style="color: #f87171;">*</span>
+                    </label>
+                    <input 
+                        type="number" 
+                        name="spending" 
+                        id="spending" 
+                        class="form-control" 
+                        placeholder="e.g. 82" 
+                        value="{{ form_data.spending }}" 
+                        min="1"
+                        max="100"
+                        required
+                    >
+                    <div class="form-help">Mall behavioral index from 1 (lowest spending activity) to 100 (highest spending activity).</div>
+                </div>
+
+                <!-- Demographics for Logistic Regression -->
+                <div style="border-top: 1px dashed var(--border-subtle); margin: 1.5rem 0 1rem; padding-top: 1rem;">
+                    <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                        Additional Demographics (For Logistic Regression Scoring)
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="age" class="form-label">Age (Years)</label>
+                            <input 
+                                type="number" 
+                                name="age" 
+                                id="age" 
+                                class="form-control" 
+                                placeholder="e.g. 28" 
+                                value="{{ form_data.age }}" 
+                                min="10"
+                                max="110"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="gender" class="form-label">Gender</label>
+                            <select name="gender" id="gender" class="form-control form-select">
+                                <option value="Female" {% if form_data.gender == 'Female' %}selected{% endif %}>Female</option>
+                                <option value="Male" {% if form_data.gender == 'Male' %}selected{% endif %}>Male</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button type="submit" class="btn btn-primary" id="btn-submit-predict" style="width: 100%; padding: 0.85rem;">
+                    🚀 Predict Customer Segment
+                </button>
+            </form>
+
+            <!-- Quick Presets -->
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">
+                    Quick Presets to Test:
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="setPreset(86, 82, 32, 'Female')">VIP ($86k, 82)</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="setPreset(88, 17, 45, 'Male')">Careful ($88k, 17)</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="setPreset(25, 79, 22, 'Female')">Impulsive ($25k, 79)</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="setPreset(26, 20, 52, 'Male')">Budget ($26k, 20)</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="setPreset(55, 50, 36, 'Female')">Balanced ($55k, 50)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Prediction Result Card -->
+        <div class="result-card" id="prediction-result-card">
+            {% if prediction %}
+                <div>
+                    <span class="result-badge" style="background: {{ prediction.badge_color }}22; color: {{ prediction.badge_color }}; border: 1px solid {{ prediction.badge_color }}44;">
+                        Cluster {{ prediction.cluster_id }} &bull; Optimal Match
+                    </span>
+                    <h2 class="result-name">{{ prediction.short_tag }}</h2>
+                    <div class="result-tag">{{ prediction.segment_name }}</div>
+
+                    <!-- Centroid Delta Stats -->
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 1rem; margin-bottom: 1.25rem;">
+                        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">
+                            Centroid Proximity Analysis
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                            <span>Annual Income: <strong>${{ prediction.input_income }}k</strong></span>
+                            <span style="color: var(--text-secondary);">Centroid: ${{ prediction.centroid_income }}k ({% if prediction.dist_income >= 0 %}+{% endif %}{{ prediction.dist_income }}k)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 0.35rem;">
+                            <span>Spending Score: <strong>{{ prediction.input_spending }}/100</strong></span>
+                            <span style="color: var(--text-secondary);">Centroid: {{ prediction.centroid_spending }} ({% if prediction.dist_spending >= 0 %}+{% endif %}{{ prediction.dist_spending }})</span>
+                        </div>
+                    </div>
+
+                    <!-- Behavioral Description -->
+                    <div style="margin-bottom: 1.25rem;">
+                        <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.35rem; color: #e2e8f0;">Customer Behavioral Profile</h3>
+                        <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.55;">
+                            {{ prediction.description }}
+                        </p>
+                    </div>
+
+                    <!-- Actionable Marketing Recommendation -->
+                    <div style="background: rgba(79, 70, 229, 0.12); border-left: 4px solid var(--primary-light); padding: 0.9rem 1rem; border-radius: 0 8px 8px 0; margin-bottom: 1.25rem;">
+                        <h4 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary-light); margin-bottom: 0.25rem;">
+                            🎯 Recommended Marketing Action
+                        </h4>
+                        <p style="font-size: 0.9rem; color: #f8fafc; line-height: 1.5;">
+                            {{ prediction.strategy }}
+                        </p>
+                    </div>
+
+                    <!-- Logistic Regression Spend Propensity -->
+                    {% if prediction.logistic_result %}
+                        <div class="propensity-meter">
+                            <div class="meter-header">
+                                <span>High-Spending Propensity (Logistic Regression)</span>
+                                <strong style="color: {% if prediction.logistic_result.is_high_spender %}#34d399{% else %}#94a3b8{% endif %};">
+                                    {{ prediction.logistic_result.probability_pct }}%
+                                </strong>
+                            </div>
+                            <div class="meter-bar">
+                                <div class="meter-fill" style="width: {{ prediction.logistic_result.probability_pct }}%;"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem;">
+                                <span>Model Verdict: <strong>{{ prediction.logistic_result.verdict }}</strong></span>
+                                <span>Demographic Classifier</span>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="result-placeholder">
+                    <div class="result-placeholder-icon">🎯</div>
+                    <h3 style="font-family: var(--font-heading); font-size: 1.35rem; margin-bottom: 0.5rem; color: var(--text-primary);">
+                        Ready for Prediction
+                    </h3>
+                    <p style="font-size: 0.92rem; max-width: 380px; margin: 0 auto; color: var(--text-secondary);">
+                        Enter customer income and spending score, or pick one of the quick presets on the left, then click <strong>Predict Customer Segment</strong>.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function setPreset(income, spending, age, gender) {
+        document.getElementById('income').value = income;
+        document.getElementById('spending').value = spending;
+        document.getElementById('age').value = age;
+        document.getElementById('gender').value = gender;
+    }
+</script>
+{% endblock %}

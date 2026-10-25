@@ -1,0 +1,107 @@
+{
+  "kmeans_features": [
+    "Annual Income (k$)",
+    "Spending Score (1-100)"
+  ],
+  "n_clusters": 5,
+  "segments": {
+    "0": {
+      "cluster_id": 0,
+      "name": "Average Income, Average Spending",
+      "short_tag": "Core Mainstream / Balanced",
+      "badge_color": "#10b981",
+      "centroid_income": 55.3,
+      "centroid_spending": 49.52,
+      "customer_count": 81,
+      "percentage": 40.5,
+      "description": "The middle-ground majority with balanced earning and spending habits, forming the steady backbone of foot traffic.",
+      "strategy": "Maintain consistent promotional campaigns, rewards for repeat visits, family-friendly events, and seasonal sales."
+    },
+    "1": {
+      "cluster_id": 1,
+      "name": "High Income, High Spending",
+      "short_tag": "VIP / Elite Shoppers",
+      "badge_color": "#8b5cf6",
+      "centroid_income": 86.54,
+      "centroid_spending": 82.13,
+      "customer_count": 39,
+      "percentage": 19.5,
+      "description": "High earners who spend lavishly. They value premium brand experiences, exclusivity, and luxury services.",
+      "strategy": "Target with VIP loyalty tiers, luxury launches, personalized shopping concierges, and early-access privileges."
+    },
+    "2": {
+      "cluster_id": 2,
+      "name": "Low Income, High Spending",
+      "short_tag": "Impulsive / Trendsetters",
+      "badge_color": "#ec4899",
+      "centroid_income": 25.73,
+      "centroid_spending": 79.36,
+      "customer_count": 22,
+      "percentage": 11.0,
+      "description": "Younger, style-driven shoppers with modest earnings but high desire for fashion, entertainment, and trendy products.",
+      "strategy": "Engage with flash sales, flexible Buy Now Pay Later (BNPL) options, trend-focused social campaigns, and influencer partnerships."
+    },
+    "3": {
+      "cluster_id": 3,
+      "name": "High Income, Low Spending",
+      "short_tag": "Careful / Conservative Wealth",
+      "badge_color": "#3b82f6",
+      "centroid_income": 88.2,
+      "centroid_spending": 17.11,
+      "customer_count": 35,
+      "percentage": 17.5,
+      "description": "Affluent individuals who are highly selective and price-conscious despite substantial income.",
+      "strategy": "Attract with high-value propositions, durable quality assurances, smart investments, and discreet promotions."
+    },
+    "4": {
+      "cluster_id": 4,
+      "name": "Low Income, Low Spending",
+      "short_tag": "Sensible / Budget Conscious",
+      "badge_color": "#64748b",
+      "centroid_income": 26.3,
+      "centroid_spending": 20.91,
+      "customer_count": 23,
+      "percentage": 11.5,
+      "description": "Price-sensitive customers who strictly budget their visits and purchase essentials only.",
+      "strategy": "Provide clear discount coupons, bundle deals, bulk savings, and practical everyday value messaging."
+    }
+  },
+  "classification_metrics": {
+    "accuracy": 0.725,
+    "precision": 0.7368,
+    "recall": 0.7,
+    "f1_score": 0.7179,
+    "roc_auc": 0.68,
+    "confusion_matrix": [
+      [
+        15,
+        5
+      ],
+      [
+        6,
+        14
+      ]
+    ],
+    "coefficients": {
+      "Age": -0.5911,
+      "Annual Income (k$)": -0.012,
+      "Gender_Encoded": -0.0096
+    },
+    "intercept": 0.046,
+    "feature_order": [
+      "Age",
+      "Annual Income (k$)",
+      "Gender_Encoded"
+    ]
+  },
+  "dataset_summary": {
+    "total_customers": 200,
+    "avg_age": 38.9,
+    "avg_income": 60.6,
+    "avg_spending": 50.2,
+    "gender_breakdown": {
+      "Female": 112,
+      "Male": 88
+    }
+  }
+}

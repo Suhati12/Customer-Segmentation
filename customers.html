@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Analysis - Customer Segmentation System{% endblock %}
+
+{% block content %}
+<div class="container dashboard-header">
+    <div class="dashboard-title-row">
+        <div>
+            <h1 class="page-title">Customer Records & Segment Analysis</h1>
+            <p class="page-subtitle">Inspect individual shopper profiles, filter by cluster group, or search by Customer ID.</p>
+        </div>
+        <a href="{{ url_for('predict') }}" class="btn btn-primary btn-sm" id="btn-cust-predict">
+            ✨ Predict Segment
+        </a>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <form method="GET" action="{{ url_for('customers') }}" class="table-filter-bar" id="customer-filter-form">
+        <!-- Search by ID -->
+        <div style="flex: 1; min-width: 200px;">
+            <label for="search_id" class="form-label" style="font-size: 0.78rem;">Search by Customer ID</label>
+            <input 
+                type="number" 
+                name="search_id" 
+                id="search_id" 
+                class="form-control" 
+                placeholder="e.g. 15 or 199" 
+                value="{{ search_id }}"
+                min="1"
+            >
+        </div>
+
+        <!-- Filter by Cluster -->
+        <div style="flex: 1; min-width: 240px;">
+            <label for="cluster" class="form-label" style="font-size: 0.78rem;">Filter by Segment</label>
+            <select name="cluster" id="cluster" class="form-control form-select">
+                <option value="all" {% if selected_cluster == 'all' %}selected{% endif %}>All Segments (All 200 Customers)</option>
+                {% for cid, seg in segments.items() %}
+                    <option value="{{ cid }}" {% if selected_cluster == (cid|string) %}selected{% endif %}>
+                        Cluster {{ cid }}: {{ seg.short_tag }} ({{ seg.customer_count }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Submit & Reset Buttons -->
+        <div style="display: flex; gap: 0.5rem; align-items: flex-end; margin-top: auto;">
+            <button type="submit" class="btn btn-primary" id="btn-apply-filter" style="padding: 0.75rem 1.25rem;">
+                🔍 Apply Filter
+            </button>
+            <a href="{{ url_for('customers') }}" class="btn btn-secondary" id="btn-reset-filter" style="padding: 0.75rem 1rem;">
+                Reset
+            </a>
+        </div>
+    </form>
+
+    <!-- Results Status Badge -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <span style="font-size: 0.9rem; color: var(--text-secondary);">
+            Showing <strong style="color: var(--text-primary);">{{ total_matched }}</strong> of {{ total_records }} total customer records
+        </span>
+        {% if selected_cluster != 'all' and selected_cluster != '' %}
+            <span class="badge" style="background: {{ segments[selected_cluster|int].badge_color }}25; color: {{ segments[selected_cluster|int].badge_color }};">
+                Active Filter: {{ segments[selected_cluster|int].short_tag }}
+            </span>
+        {% endif %}
+    </div>
+
+    <!-- Customer Table -->
+    <div class="table-wrapper">
+        <table class="data-table" id="customer-data-table">
+            <thead>
+                <tr>
+                    <th>Customer ID</th>
+                    <th>Gender</th>
+                    <th>Age</th>
+                    <th>Annual Income</th>
+                    <th>Spending Score</th>
+                    <th>Assigned Cluster</th>
+                    <th>Segment Profile</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if customers %}
+                    {% for c in customers %}
+                        <tr>
+                            <td>
+                                <strong style="font-family: var(--font-mono); color: var(--primary-light);">#{{ c.CustomerID }}</strong>
+                            </td>
+                            <td>
+                                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                                    {% if c.Gender == 'Female' %}
+                                        <span style="color: #ec4899;">♀</span> Female
+                                    {% else %}
+                                        <span style="color: #3b82f6;">♂</span> Male
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>{{ c.Age }} yrs</td>
+                            <td>
+                                <span style="font-weight: 600;">${{ c['Annual Income (k$)'] }}k</span>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span>{{ c['Spending Score (1-100)'] }}</span>
+                                    <div style="width: 50px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                                        <div style="width: {{ c['Spending Score (1-100)'] }}%; height: 100%; background: {% if c['Spending Score (1-100)'] >= 60 %}#10b981{% elif c['Spending Score (1-100)'] >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge" style="background: {{ segments[c.Cluster].badge_color }}22; color: {{ segments[c.Cluster].badge_color }};">
+                                    <span class="badge-dot"></span> Cluster {{ c.Cluster }}
+                                </span>
+                            </td>
+                            <td>
+                                <span style="font-weight: 500; font-size: 0.88rem;">{{ segments[c.Cluster].short_tag }}</span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                            No matching customer records found for your search criteria.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Cluster Characteristics Drawer -->
+    <div class="card mt-4 mb-4">
+        <h2 class="page-title mb-2" style="font-size: 1.35rem;">Segment Characteristics Reference Guide</h2>
+        <p class="page-subtitle mb-4">Understand the underlying patterns and recommended marketing activations for each segment.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+            {% for cid, seg in segments.items() %}
+                <div style="background: rgba(255, 255, 255, 0.02); border-left: 3px solid {{ seg.badge_color }}; padding: 1rem; border-radius: 0 8px 8px 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                        <strong style="color: {{ seg.badge_color }}; font-size: 0.95rem;">Cluster {{ cid }}: {{ seg.short_tag }}</strong>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">{{ seg.percentage }}%</span>
+                    </div>
+                    <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                        {{ seg.description }}
+                    </div>
+                    <div style="font-size: 0.78rem; color: #cbd5e1; background: rgba(0,0,0,0.2); padding: 0.4rem 0.6rem; border-radius: 4px;">
+                        <strong>Action:</strong> {{ seg.strategy }}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

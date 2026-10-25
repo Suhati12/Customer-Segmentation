@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Customer Segmentation System{% endblock %}
+
+{% block content %}
+<div class="container dashboard-header">
+    <div class="dashboard-title-row">
+        <div>
+            <h1 class="page-title">Executive Segmentation Dashboard</h1>
+            <p class="page-subtitle">Comprehensive cluster analytics, distribution metrics, and model evaluations.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{{ url_for('predict') }}" class="btn btn-primary btn-sm" id="btn-dash-predict">
+                ✨ Run New Prediction
+            </a>
+            <a href="{{ url_for('customers') }}" class="btn btn-secondary btn-sm" id="btn-dash-customers">
+                👥 View Customer Table
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Metric Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card" id="kpi-customers">
+            <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.15); color: #818cf8;">👥</div>
+            <div class="kpi-content">
+                <div class="kpi-title">Total Customers</div>
+                <div class="kpi-number">{{ summary.total_customers or 200 }}</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">100% records clustered</div>
+            </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-segments">
+            <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">🧩</div>
+            <div class="kpi-content">
+                <div class="kpi-title">Customer Segments</div>
+                <div class="kpi-number">5</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Optimal k via Elbow Method</div>
+            </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-income">
+            <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.15); color: #22d3ee;">💵</div>
+            <div class="kpi-content">
+                <div class="kpi-title">Avg Annual Income</div>
+                <div class="kpi-number">${{ summary.avg_income or 60.6 }}k</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Range: $15k - $137k</div>
+            </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-spending">
+            <div class="kpi-icon" style="background: rgba(236, 72, 153, 0.15); color: #f472b6;">🛍️</div>
+            <div class="kpi-content">
+                <div class="kpi-title">Avg Spending Score</div>
+                <div class="kpi-number">{{ summary.avg_spending or 50.2 }}<span style="font-size: 1rem; color: var(--text-muted);">/100</span></div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Std Dev: &plusmn;25.8</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Visualizations Row -->
+    <div class="dashboard-grid">
+        <!-- Interactive Scatter Plot (Income vs Spending with Clusters) -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div>
+                    <h2 class="chart-title">Customer Segmentation Plane (Annual Income vs Spending Score)</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                        Interactive K-Means clusters (k=5). Stars mark cluster centroids. Hover for customer ID and coordinates.
+                    </p>
+                </div>
+                <button class="btn btn-outline btn-sm" id="btn-toggle-static" onclick="toggleStaticChart()">
+                    🖼️ Toggle Matplotlib Plot
+                </button>
+            </div>
+
+            <!-- Chart.js Canvas -->
+            <div class="chart-container" id="interactive-scatter-container">
+                <canvas id="segmentScatterChart"></canvas>
+            </div>
+
+            <!-- Static Plot Container (Initially Hidden) -->
+            <div id="static-scatter-container" style="display: none; text-align: center;">
+                <img src="{{ url_for('static', filename='charts/kmeans_clusters.png') }}" alt="K-Means Clusters Matplotlib" style="max-width: 100%; border-radius: 10px; border: 1px solid var(--border-subtle);">
+            </div>
+        </div>
+
+        <!-- Gender & Age Demographics -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <h2 class="chart-title">Customer Demographics</h2>
+            </div>
+            <div style="position: relative; height: 190px; margin-bottom: 1.5rem;">
+                <canvas id="genderDoughnutChart"></canvas>
+            </div>
+            <div style="position: relative; height: 160px;">
+                <canvas id="ageBarChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDA & Model Optimization Visualizations -->
+    <h2 class="page-title mt-4 mb-2">Machine Learning Validation & Preprocessing Charts</h2>
+    <p class="page-subtitle mb-4">High-resolution plots produced during training and validation.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+        <!-- Elbow & Silhouette Curve -->
+        <div class="card">
+            <h3 style="font-size: 1.1rem; font-family: var(--font-heading); margin-bottom: 0.5rem;">
+                1. Optimal k: Elbow Method & Silhouette Analysis
+            </h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                Inflection occurs at k=5 with peak Silhouette score of 0.5547, confirming distinct geometric separation.
+            </p>
+            <img src="{{ url_for('static', filename='charts/kmeans_elbow_curve.png') }}" alt="Elbow Method Curve" style="width: 100%; border-radius: 8px;">
+        </div>
+
+        <!-- Feature Distributions -->
+        <div class="card">
+            <h3 style="font-size: 1.1rem; font-family: var(--font-heading); margin-bottom: 0.5rem;">
+                2. Exploratory Distributions (Age, Income, Spending)
+            </h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                KDE and histogram overlays showing distribution shapes, medians, and legitimate high-income outliers.
+            </p>
+            <img src="{{ url_for('static', filename='charts/eda_distributions.png') }}" alt="EDA Distributions" style="width: 100%; border-radius: 8px;">
+        </div>
+
+        <!-- Feature Correlations -->
+        <div class="card">
+            <h3 style="font-size: 1.1rem; font-family: var(--font-heading); margin-bottom: 0.5rem;">
+                3. Feature Correlation Matrix
+            </h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                Highlights negative correlation between Age and Spending (-0.327), while Income and Spending are non-linear.
+            </p>
+            <img src="{{ url_for('static', filename='charts/eda_correlation_heatmap.png') }}" alt="Correlation Heatmap" style="width: 100%; border-radius: 8px;">
+        </div>
+    </div>
+
+    <!-- Cluster Segments Detailed Table/Cards -->
+    <h2 class="page-title mt-4 mb-2">Segment Profiles & Business Strategies</h2>
+    <p class="page-subtitle mb-4">Detailed attributes derived from centroid centers and behavioral patterns.</p>
+
+    <div class="segment-cards-grid">
+        {% for cid, seg in segments.items() %}
+            <div class="segment-card" style="border-top-color: {{ seg.badge_color }};">
+                <div class="segment-card-header">
+                    <div>
+                        <span class="badge" style="background: {{ seg.badge_color }}22; color: {{ seg.badge_color }};">
+                            <span class="badge-dot"></span> Cluster {{ cid }}
+                        </span>
+                        <h3 class="segment-card-title mt-1">{{ seg.short_tag }}</h3>
+                        <div style="font-size: 0.82rem; color: var(--text-secondary);">{{ seg.name }}</div>
+                    </div>
+                    <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700;">
+                        {{ seg.customer_count }} ({{ seg.percentage }}%)
+                    </span>
+                </div>
+
+                <div class="segment-metric-row">
+                    <div class="segment-metric">
+                        <div class="segment-metric-label">Centroid Income</div>
+                        <div class="segment-metric-val">${{ seg.centroid_income }}k</div>
+                    </div>
+                    <div class="segment-metric">
+                        <div class="segment-metric-label">Centroid Spending</div>
+                        <div class="segment-metric-val">{{ seg.centroid_spending }} / 100</div>
+                    </div>
+                </div>
+
+                <p class="segment-desc">{{ seg.description }}</p>
+                <div class="segment-strategy">
+                    <strong>Recommended Strategy:</strong> {{ seg.strategy }}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Logistic Regression Performance Section -->
+    <div class="card mt-4 mb-4" id="logistic-regression-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+                <span class="badge" style="background: rgba(2, 132, 199, 0.2); color: #38bdf8;">Supervised Classification Module</span>
+                <h2 class="page-title mt-1" style="font-size: 1.5rem;">Logistic Regression: High-Spending Propensity</h2>
+                <p style="font-size: 0.88rem; color: var(--text-secondary);">
+                    Predicts whether a customer will demonstrate a High Spending Score (&ge; 50) based on demographic features (Age, Income, Gender).
+                </p>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <div style="text-align: center; padding: 0.5rem 1rem; background: rgba(255,255,255,0.04); border-radius: 8px;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Accuracy</div>
+                    <div style="font-size: 1.4rem; font-weight: 700; color: #10b981;">{{ (clf_metrics.accuracy * 100)|round(1) }}%</div>
+                </div>
+                <div style="text-align: center; padding: 0.5rem 1rem; background: rgba(255,255,255,0.04); border-radius: 8px;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">F1-Score</div>
+                    <div style="font-size: 1.4rem; font-weight: 700; color: #8b5cf6;">{{ clf_metrics.f1_score|round(3) }}</div>
+                </div>
+                <div style="text-align: center; padding: 0.5rem 1rem; background: rgba(255,255,255,0.04); border-radius: 8px;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">ROC-AUC</div>
+                    <div style="font-size: 1.4rem; font-weight: 700; color: #06b6d4;">{{ clf_metrics.roc_auc|round(3) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: center;">
+            <div>
+                <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1rem;">
+                    <strong>Methodology & Interpretation:</strong><br>
+                    Unlike unsupervised K-Means (which clusters existing patterns without labels), Logistic Regression solves a distinct supervised problem: scoring new prospects based on demographic attributes alone.
+                </p>
+                <div style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 0.9rem; font-family: var(--font-mono); font-size: 0.85rem;">
+                    <div>Model Coefficients:</div>
+                    {% for feat, coef in clf_metrics.coefficients.items() %}
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.3rem;">
+                            <span style="color: #94a3b8;">{{ feat }}:</span>
+                            <span style="color: {% if coef < 0 %}#f87171{% else %}#4ade80{% endif %}; font-weight: 600;">{{ coef }}</span>
+                        </div>
+                    {% endfor %}
+                    <div style="display: flex; justify-content: space-between; margin-top: 0.3rem; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 0.3rem;">
+                        <span style="color: #94a3b8;">Intercept:</span>
+                        <span>{{ clf_metrics.intercept }}</span>
+                    </div>
+                </div>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.75rem;">
+                    * The negative weight on Age indicates younger customer profiles carry substantially higher likelihood of active spending.
+                </p>
+            </div>
+
+            <div style="text-align: center;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">Confusion Matrix (Test Set)</div>
+                <img src="{{ url_for('static', filename='charts/logistic_confusion_matrix.png') }}" alt="Confusion Matrix" style="max-height: 240px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Toggle between interactive Chart.js canvas and Matplotlib static render
+    function toggleStaticChart() {
+        const interactive = document.getElementById('interactive-scatter-container');
+        const staticImg = document.getElementById('static-scatter-container');
+        const btn = document.getElementById('btn-toggle-static');
+
+        if (interactive.style.display === 'none') {
+            interactive.style.display = 'block';
+            staticImg.style.display = 'none';
+            btn.innerHTML = '🖼️ Toggle Matplotlib Plot';
+        } else {
+            interactive.style.display = 'none';
+            staticImg.style.display = 'block';
+            btn.innerHTML = '📊 Toggle Interactive Chart';
+        }
+    }
+
+    // Load dynamic customer data and render interactive scatter plot
+    fetch('/api/customer-data')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('segmentScatterChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: data.datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Annual Income (k$)',
+                                color: '#94a3b8',
+                                font: { weight: 'bold', size: 12 }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Spending Score (1-100)',
+                                color: '#94a3b8',
+                                font: { weight: 'bold', size: 12 }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                            ticks: { color: '#94a3b8' },
+                            min: 0,
+                            max: 105
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0', usePointStyle: true, boxWidth: 8 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const point = context.raw;
+                                    if (point.id) {
+                                        return `${context.dataset.label} (ID: ${point.id}) -> Income: $${point.x}k, Score: ${point.y}`;
+                                    }
+                                    return `${context.dataset.label} -> Centroid ($${point.x}k, Score: ${point.y})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(err => console.error("Could not fetch customer data for chart:", err));
+
+    // Render Demographic Charts
+    // 1. Gender Doughnut
+    const genderCtx = document.getElementById('genderDoughnutChart').getContext('2d');
+    new Chart(genderCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Female (56%)', 'Male (44%)'],
+            datasets: [{
+                data: [{{ gender_counts.get('Female', 112) }}, {{ gender_counts.get('Male', 88) }}],
+                backgroundColor: ['#ec4899', '#3b82f6'],
+                borderColor: '#111827',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: { display: true, text: 'Gender Breakdown', color: '#cbd5e1' },
+                legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+            }
+        }
+    });
+
+    // 2. Age Group Bar Chart
+    const ageCtx = document.getElementById('ageBarChart').getContext('2d');
+    new Chart(ageCtx, {
+        type: 'bar',
+        data: {
+            labels: ['18-24', '25-34', '35-49', '50+'],
+            datasets: [{
+                label: 'Customers by Age Bracket',
+                data: [
+                    {{ age_distribution.get('18-24', 34) }},
+                    {{ age_distribution.get('25-34', 60) }},
+                    {{ age_distribution.get('35-49', 66) }},
+                    {{ age_distribution.get('50+', 40) }}
+                ],
+                backgroundColor: 'rgba(99, 102, 241, 0.75)',
+                borderColor: '#6366f1',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+</script>
+{% endblock %}

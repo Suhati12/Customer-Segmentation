@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Customer Segmentation System{% endblock %}
+
+{% block content %}
+<section class="hero" id="hero-section">
+    <div class="container">
+        <div class="hero-pill">
+            <span>✨ Machine Learning Platform</span> &bull; <span>K-Means & Logistic Regression</span>
+        </div>
+        <h1 class="hero-title">
+            Transform Retail Data into <span>Strategic Customer Segments</span>
+        </h1>
+        <p class="hero-subtitle">
+            An intelligent customer segmentation system powered by unsupervised K-Means clustering and predictive modeling.
+            Discover hidden spending patterns, optimize marketing campaigns, and predict new customer affinities in real-time.
+        </p>
+        <div class="hero-actions">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary" id="btn-hero-dashboard">
+                📊 Open Live Dashboard
+            </a>
+            <a href="{{ url_for('predict') }}" class="btn btn-secondary" id="btn-hero-predict">
+                🔮 Predict Customer Segment
+            </a>
+            <a href="{{ url_for('customers') }}" class="btn btn-outline" id="btn-hero-customers">
+                👥 View Customer Records
+            </a>
+        </div>
+
+        <!-- Quick Stats Banner -->
+        <div class="stats-banner" id="stats-banner">
+            <div class="stat-item">
+                <div class="stat-value">{{ summary.total_customers or 200 }}</div>
+                <div class="stat-label">Mall Shoppers Analyzed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">5</div>
+                <div class="stat-label">Actionable Segments (k=5)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${{ summary.avg_income or 60.6 }}k</div>
+                <div class="stat-label">Average Annual Income</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ summary.avg_spending or 50.2 }} / 100</div>
+                <div class="stat-label">Average Spending Score</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- What is Customer Segmentation Section -->
+<section class="container mb-4" id="about-segmentation-section">
+    <h2 class="section-title">What is Customer Segmentation?</h2>
+    <p class="section-desc">
+        Customer segmentation partitions a retail customer base into specific groups with shared financial behaviors,
+        enabling personalized marketing strategies, higher conversion rates, and improved customer lifetime value.
+    </p>
+
+    <div class="grid-3">
+        <div class="feature-card">
+            <div class="feature-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">🎯</div>
+            <h3 class="feature-title">Precision Marketing</h3>
+            <p class="feature-text">
+                Deliver tailored promotions to each segment instead of generic mass blasts. Treat VIP spenders with exclusive perks and budget shoppers with practical value bundles.
+            </p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">📈</div>
+            <h3 class="feature-title">Revenue & Retention</h3>
+            <p class="feature-text">
+                Identify high-earning, low-spending customers who represent untapped growth, and design targeted incentives to activate their latent purchasing power.
+            </p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon" style="background: rgba(6, 182, 212, 0.15); color: #06b6d4;">🤖</div>
+            <h3 class="feature-title">Real-Time Scoring</h3>
+            <p class="feature-text">
+                Instantly predict a new shopper's segment and spending propensity using the trained K-Means pipeline and supervised Logistic Regression model.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- The 5 Discovered Segments Preview -->
+<section class="container mb-4" id="segments-preview-section">
+    <h2 class="section-title">The 5 Customer Segments</h2>
+    <p class="section-desc">Identified by K-Means clustering on the Mall Customers dataset.</p>
+
+    <div class="segment-cards-grid">
+        {% if metadata and metadata.segments %}
+            {% for cid, seg in metadata.segments.items() %}
+                <div class="segment-card" style="border-top-color: {{ seg.badge_color }};">
+                    <div class="segment-card-header">
+                        <div>
+                            <span class="badge" style="background: {{ seg.badge_color }}22; color: {{ seg.badge_color }};">
+                                <span class="badge-dot"></span> Cluster {{ cid }}
+                            </span>
+                            <h3 class="segment-card-title mt-1">{{ seg.short_tag }}</h3>
+                        </div>
+                        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+                            {{ seg.customer_count }} shoppers ({{ seg.percentage }}%)
+                        </span>
+                    </div>
+
+                    <div class="segment-metric-row">
+                        <div class="segment-metric">
+                            <div class="segment-metric-label">Avg Income</div>
+                            <div class="segment-metric-val">${{ seg.centroid_income }}k</div>
+                        </div>
+                        <div class="segment-metric">
+                            <div class="segment-metric-label">Avg Spend Score</div>
+                            <div class="segment-metric-val">{{ seg.centroid_spending }} / 100</div>
+                        </div>
+                    </div>
+
+                    <p class="segment-desc">{{ seg.description }}</p>
+                    <div class="segment-strategy">
+                        <strong>Strategy:</strong> {{ seg.strategy }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="text-center mt-3">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary" id="btn-view-all-dashboard">
+            Explore Visualizations & Full Dashboard &rarr;
+        </a>
+    </div>
+</section>
+{% endblock %}
