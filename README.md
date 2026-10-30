@@ -1,3 +1,4 @@
+
 # Customer Segmentation System
 
 An end-to-end Machine Learning and Web Application for retail customer segmentation using **K-Means Clustering**, **Logistic Regression Classification**, and a modern **Flask Web Application**.
